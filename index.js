@@ -16,7 +16,10 @@ const options = {
     hideErrors: true
 }
 
+const votingMaps = new Map();
+
 let reactMessage;
+let timer;
 let editMessage;
 let minecraftBot;
 
@@ -30,11 +33,70 @@ discordClient.on('ready',async () => {
     })
     console.log(`Logged in as ${discordClient.user.tag}!`);
 
+    votingMaps.clear()
+
     await discordClient.channels.cache.get('1134238271824736307').messages.fetch('1134239588097982575').then(message => setReactionMessage(message))
     await discordClient.channels.cache.get('1134238271824736307').messages.fetch('1134244462923632710').then(message => setEditMessage(message))
 
     react()
+    restartTimer()
 
+});
+
+discordClient.on(Events.MessageReactionAdd, async (reaction, user) => {
+    if (!user.bot) {
+        if (reaction.message.id === '1134239588097982575') {
+            console.log('reaction received')
+            await reaction.remove();
+            editMessage.edit('𝙇𝙤𝙖𝙙𝙞𝙣𝙜...')
+            spawnMinecraftBot(user.username);
+            setTimeout(react,4000)
+        }
+    }
+})
+
+discordClient.on('interactionCreate', async interaction => {
+    if (!interaction.isChatInputCommand()) return;
+
+    if (interaction.commandName === 'addmaprole') {
+        const mapName = interaction.options.getString("map")
+
+        let roleId = nameToRoleId(mapName)
+
+        if (roleId == null) {
+            await interaction.reply('Map not found! Try checking your spelling or contact ja90n');
+            return;
+        }
+
+        const myGuild = discordClient.guilds.cache.get('1134116455697350746');
+        const myRole = myGuild.roles.cache.find(role => role.id.toString() === roleId);
+
+        if (interaction.member.roles.cache.has(roleId)) {
+            await interaction.reply('You already have that role!');
+            return;
+        }
+
+        interaction.member.roles.add(myRole);
+
+        await interaction.reply('Succes! You will be notified when ' + mapName + ' is voted on!');
+
+    } else if (interaction.commandName === 'removemaprole') {
+        const mapName = interaction.options.getString("map")
+
+        let roleId = nameToRoleId(mapName)
+
+        if (roleId == null) {
+            await interaction.reply('Map not found! Try checking your spelling or contact ja90n');
+            return;
+        }
+
+        if (interaction.member.roles.cache.has(roleId)) {
+            interaction.member.roles.remove(roleId)
+            await interaction.reply('Your role has been removed!');
+        } else {
+            await interaction.reply('You don\'t have that role!');
+        }
+    }
 });
 
 function setReactionMessage(message) {
@@ -45,17 +107,10 @@ function setEditMessage(message) {
     editMessage = message;
 }
 
-discordClient.on(Events.MessageReactionAdd, async (reaction, user) => {
-    if (!user.bot) {
-        if (reaction.message.id === '1134239588097982575') {
-            console.log('reaction received')
-            await reaction.remove();
-            editMessage.edit('𝙇𝙤𝙖𝙙𝙞𝙣𝙜...')
-            spawnMinecraftBot(user);
-            setTimeout(react,4000)
-        }
-    }
-})
+function restartTimer() {
+    clearTimeout(timer);
+    timer = setTimeout(spawnMinecraftBot,300000,'automatic update')
+}
 
 function react() {
     reactMessage.react('✅')
@@ -64,6 +119,7 @@ function react() {
 
 function spawnMinecraftBot(user) {
 
+    console.log('-------------------')
     console.log('spawning minecraft bot')
     minecraftBot = mineflayer.createBot(options);
     minecraftBot.logErrors = false;
@@ -109,172 +165,200 @@ function getMapsFromAnniGui(window, user) {
         let phase = window.slots[i].customLore[1].slice(2);
         let playerCount = window.slots[i].customLore[2].slice(2);
 
+        if (phase.startsWith('Phase 3')) {
+            phase = 'Phase 3' // Removes '(§bPremium§r join privilege)'
+        }
+
+        if (!votingMaps.has(i)) {
+            votingMaps.set(i,i.toString())
+        }
+
         if (map.startsWith('Voting: ')) {
-            mapToRole(map.slice(8)) // The .slice(8) removes the 'Voting: ' from the string
+            pingMaps(i,map.slice(8)) // The .slice(8) removes the 'Voting: ' from the string
+        } else {
+            votingMaps.set(i,i.toString());
         }
 
         message = message + (i+1) + ': ' + map + ', ' + phase + ', ' + playerCount + '\n';
     }
 
     message = message + 'Last updated ' + '<t:' + Math.round((Date.now().toPrecision()/1000)) + ':R>'
-    message = message + '. Requested by: ' + user.username
+    message = message + '. Requested by: ' + user
 
     discordClient.channels.cache.get('1134238271824736307').messages.fetch('1134244462923632710').then(discordMessage => discordMessage.edit(message))
 
     console.log(message)
+
+    restartTimer()
+
     minecraftBot.quit();
 }
 
-//I am so sorry
-function mapToRole(map) {
-    if (map.includes('Andorra')) {
-        pingMap('1134496238000165077')
-    }
-    if (map.includes('Villages')) {
-        pingMap('1134496317796798645')
-    }
-    if (map.includes('Hamlet')) {
-        pingMap('1134496389955584000')
-    }
-    if (map.includes('Canyon')) {
-        pingMap('1134496445806940200')
-    }
-    if (map.includes('Aftermath')) {
-        pingMap('1134496560068165682')
-    }
-    if (map.includes('Cherokee')) {
-        pingMap('1134496645250297996')
-    }
-    if (map.includes('Kingdom')) {
-        pingMap('1134496790859759617')
-    }
-    if (map.includes('Nature')) {
-        pingMap('1134497012704891031')
-    }
-    if (map.includes('Alpine')) {
-        pingMap('1134497102844678245')
-    }
-    if (map.includes('Amazon')) {
-        pingMap('1134497192674074634')
-    }
-    if (map.includes('AnniZ')) {
-        pingMap('1134497268855226378')
-    }
-    if (map.includes('Babylon')) {
-        pingMap('1134497332923215923')
-    }
-    if (map.includes('Castaway')) {
-        pingMap('1134497386509631589')
-    }
-    if (map.includes('Castles')) {
-        pingMap('1134497458127376415')
-    }
-    if (map.includes('Cavern')) {
-        pingMap('1134497512582029414')
-    }
-    if (map.includes('Chasm')) {
-        pingMap('1134497561797988384')
-    }
-    if (map.includes('Collis')) {
-        pingMap('1134497631566041180')
-    }
-    if (map.includes('Districts')) {
-        pingMap('1134497848176672778')
-    }
-    if (map.includes('Etna')) {
-        pingMap('1134497914471858259')
-    }
-    if (map.includes('Fossils')) {
-        pingMap('1134497997531652137')
-    }
-    if (map.includes('Foxberry')) {
-        pingMap('1134498065093492766')
-    }
-    if (map.includes('Galleons')) {
-        pingMap('1134498113705476197')
-    }
-    if (map.includes('Grasslands')) {
-        pingMap('1134498186799616040')
-    }
-    if (map.includes('Highnorth')) {
-        pingMap('1134498330232234065')
-    }
-    if (map.includes('Ikusa')) {
-        pingMap('1134498386112946186')
-    }
-    if (map.includes('Meteor')) {
-        pingMap('1134498433571491850')
-    }
-    if (map.includes('Mythos')) {
-        pingMap('1134498482833592400')
-    }
-    if (map.includes('Pokatoto')) {
-        pingMap('1134498564165353512')
-    }
-    if (map.includes('Rifts')) {
-        pingMap('1134498626341716088')
-    }
-    if (map.includes('Royal')) {
-        pingMap('1134498846291017808')
-    }
-    if (map.includes('Sherwood')) {
-        pingMap('1134498908161191957')
-    }
-    if (map.includes('Shiloh')) {
-        pingMap('1134498983390228523')
-    }
-    if (map.includes('Shroomlette')) {
-        pingMap('1134499034837549177')
-    }
-    if (map.includes('Skylands')) {
-        pingMap('1134499158041047041')
-    }
-    if (map.includes('Solomque')) {
-        pingMap('1134499218225123358')
-    }
-    if (map.includes('StoneHaven')) {
-        pingMap('1134499296625041528')
-    }
-    if (map.includes('Temples')) {
-        pingMap('1134499532412031127')
-    }
-    if (map.includes('Thaw')) {
-        pingMap('1134502211225911336')
-    }
-    if (map.includes('Thallos')) {
-        pingMap('1134502165696757820')
-    }
-    if (map.includes('Tides')) {
-        pingMap('1134502277160386630')
-    }
-    if (map.includes('Tireus')) {
-        pingMap('1134502328683221012')
-    }
-    if (map.includes('Tirreg')) {
-        pingMap('1134502412648980500')
-    }
-    if (map.includes('Tropics')) {
-        pingMap('1134502460984148028')
-    }
-    if (map.includes('Twilight')) {
-        pingMap('1134502536020242464')
-    }
-    if (map.includes('Valleys')) {
-        pingMap('1134502705650479285')
-    }
-    if (map.includes('Yggdrasil')) {
-        pingMap('1134502890455707738')
-    }
-    if (map.includes('Wintertide')) {
-        pingMap('1134503319344254987')
-    }
-    if (map.includes('Thallos')) {
-        pingMap('1134502165696757820')
+function pingMaps(mapNumber,map) {
+    if (votingMaps.get(mapNumber) === map) {
+    } else {
+        votingMaps.set(mapNumber,map)
+        let splitMaps = map.split(', ')
+        for (let i = 0; i < splitMaps.length; i++) {
+            pingMap(nameToRoleId(splitMaps[i]))
+        }
     }
 }
 
+//I am so sorry
+function nameToRoleId(name) {
+    if (name.includes('Andorra')) {
+        return '1134496238000165077'
+    }
+    if (name.includes('Villages')) {
+        return '1134496317796798645'
+    }
+    if (name.includes('Hamlet')) {
+        return '1134496389955584000'
+    }
+    if (name.includes('Canyon')) {
+        return '1134496445806940200'
+    }
+    if (name.includes('Aftermath')) {
+        return '1134496560068165682'
+    }
+    if (name.includes('Cherokee')) {
+        return '1134496645250297996'
+    }
+    if (name.includes('Kingdom')) {
+        return '1134496790859759617'
+    }
+    if (name.includes('Nature')) {
+        return '1134497012704891031'
+    }
+    if (name.includes('Alpine')) {
+        return '1134497102844678245'
+    }
+    if (name.includes('Amazon')) {
+        return '1134497192674074634'
+    }
+    if (name.includes('AnniZ')) {
+        return '1134497268855226378'
+    }
+    if (name.includes('Babylon')) {
+        return '1134497332923215923'
+    }
+    if (name.includes('Castaway')) {
+        return '1134497386509631589'
+    }
+    if (name.includes('Castles')) {
+        return '1134497458127376415'
+    }
+    if (name.includes('Cavern')) {
+        return '1134497512582029414'
+    }
+    if (name.includes('Chasm')) {
+        return '1134497561797988384'
+    }
+    if (name.includes('Collis')) {
+        return '1134497631566041180'
+    }
+    if (name.includes('Districts')) {
+        return '1134497848176672778'
+    }
+    if (name.includes('Etna')) {
+        return '1134497914471858259'
+    }
+    if (name.includes('Fossils')) {
+        return '1134497997531652137'
+    }
+    if (name.includes('Foxberry')) {
+        return '1134498065093492766'
+    }
+    if (name.includes('Galleons')) {
+        return '1134498113705476197'
+    }
+    if (name.includes('Grasslands')) {
+        return '1134498186799616040'
+    }
+    if (name.includes('Highnorth')) {
+        return '1134498330232234065'
+    }
+    if (name.includes('Ikusa')) {
+        return '1134498386112946186'
+    }
+    if (name.includes('Meteor')) {
+        return '1134498433571491850'
+    }
+    if (name.includes('Mythos')) {
+        return '1134498482833592400'
+    }
+    if (name.includes('Pokatoto')) {
+        return '1134498564165353512'
+    }
+    if (name.includes('Rifts')) {
+        return '1134498626341716088'
+    }
+    if (name.includes('Royal')) {
+        return '1134498846291017808'
+    }
+    if (name.includes('Sherwood')) {
+        return '1134498908161191957'
+    }
+    if (name.includes('Shiloh')) {
+        return '1134498983390228523'
+    }
+    if (name.includes('Shroomlette')) {
+        return '1134499034837549177'
+    }
+    if (name.includes('Skylands')) {
+        return '1134499158041047041'
+    }
+    if (name.includes('Solomque')) {
+        return '1134499218225123358'
+    }
+    if (name.includes('StoneHaven')) {
+        return '1134499296625041528'
+    }
+    if (name.includes('Temples')) {
+        return '1134499532412031127'
+    }
+    if (name.includes('Thaw')) {
+        return '1134502211225911336'
+    }
+    if (name.includes('Thallos')) {
+        return'1134502165696757820'
+    }
+    if (name.includes('Tides')) {
+        return '1134502277160386630'
+    }
+    if (name.includes('Tireus')) {
+        return '1134502328683221012'
+    }
+    if (name.includes('Tirreg')) {
+        return '1134502412648980500'
+    }
+    if (name.includes('Tropics')) {
+        return '1134502460984148028'
+    }
+    if (name.includes('Twilight')) {
+        return '1134502536020242464'
+    }
+    if (name.includes('Valleys')) {
+        return '1134502705650479285'
+    }
+    if (name.includes('Yggdrasil')) {
+        return '1134502890455707738'
+    }
+    if (name.includes('Wintertide')) {
+        return '1134503319344254987'
+    }
+    if (name.includes('Thallos')) {
+        return '1134502165696757820'
+    }
+    if (name.includes('Cronos')) {
+        return '1135234347851587605'
+    }
+    return null;
+}
+
 function pingMap(roleId) {
-    discordClient.channels.fetch('1134571091164155994').then(channel => channel.send('<@&' + roleId + '> is in voting!'));
+    discordClient.channels.fetch('1134571091164155994').then(channel => channel.send('<@&' + roleId + '>'));
 }
 
 discordClient.login('')
