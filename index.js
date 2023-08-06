@@ -119,36 +119,43 @@ function react() {
 
 function spawnMinecraftBot(user) {
 
-    console.log('-------------------')
-    console.log('spawning minecraft bot')
-    minecraftBot = mineflayer.createBot(options);
-    minecraftBot.logErrors = false;
-    minecraftBot.hideErrors = true;
-    let isInAnni = false;
+    try {
+        console.log('-------------------')
+        console.log('spawning minecraft bot')
+        minecraftBot = mineflayer.createBot(options);
+        minecraftBot.logErrors = false;
+        minecraftBot.hideErrors = true;
+        let isInAnni = false;
 
-    // On spawn opens gui
-    minecraftBot.on('spawn', () => {
-        minecraftBot.setQuickBarSlot(0);
-        minecraftBot.activateItem();
-    })
+        // On spawn opens gui
+        minecraftBot.on('spawn', () => {
+            minecraftBot.setQuickBarSlot(0);
+            minecraftBot.activateItem();
+        })
 
-    // Checks if we have joined the Anni server instead of the lobby by looking at the welcome reactMessage
-    minecraftBot.on('message', (msg) => {
-        let chatMessage;
-        chatMessage = JSON.stringify(msg)
-        if (chatMessage.includes("\"color\":\"green\",\"text\":\"Welcome back \"")) {
-            isInAnni = true;
-        }
-    })
+        // Checks if we have joined the Anni server instead of the lobby by looking at the welcome reactMessage
+        minecraftBot.on('message', (msg) => {
+            let chatMessage;
+            chatMessage = JSON.stringify(msg)
+            if (chatMessage.includes("\"color\":\"green\",\"text\":\"Welcome back \"")) {
+                isInAnni = true;
+            }
+        })
 
-    minecraftBot.on('windowOpen', (window) => {
-        console.log('opened window')
-        if (isInAnni) {
-            getMapsFromAnniGui(window, user);
-        } else {
-            minecraftBot.clickWindow(5,0,0)
-        }
-    })
+        minecraftBot.on('windowOpen', (window) => {
+            console.log('opened window')
+            if (isInAnni) {
+                getMapsFromAnniGui(window, user);
+            } else {
+                minecraftBot.clickWindow(5,0,0)
+            }
+        })
+    }
+    catch(err) {
+        discordClient.channels.cache.get('1134238271824736307').messages.fetch('1134244462923632710').then(discordMessage => discordMessage.edit("Something went wrong! Try again later"))
+        console.log(err)
+        console.log('sukkel')
+    }
 }
 
 function getMapsFromAnniGui(window, user) {
@@ -353,6 +360,9 @@ function nameToRoleId(name) {
     }
     if (name.includes('Cronos')) {
         return '1135234347851587605'
+    }
+    if (name.includes('Summerstal')) {
+        return '1135294379863580802'
     }
     return null;
 }
